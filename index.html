@@ -4,11 +4,26 @@
     <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-    <canvas id="Canvas" width="1920" height="1080"></canvas>
+    <canvas id="Canvas"></canvas>
 
-    <button class="button btn btn-light" onclick="startpause()">Play/Pause</button>
+    
+    <script id="Frag" type="notjs">
+        precision mediump float;
 
+        void main() {
+
+            gl_FragColor = vec4(1, 0, 0.5, 1); 
+        }
+    </script>
+    <script id="Vert" type="notjs">
+        attribute vec4 a_position;
+
+
+        void main() {
+
+            gl_Position = a_position;
+        }
+    </script>
+    <script src="https://webglfundamentals.org/webgl/resources/webgl-utils.js"></script>
     <script src="script.js"></script>
-    <script id="Frag" src="frag.js"></script>
-    <script id="Vert" src="vert.js"></script>
 </body>
