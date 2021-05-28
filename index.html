@@ -7,23 +7,29 @@
     <canvas id="Canvas"></canvas>
 
     
+    <script id="Vert" type="notjs">
+        attribute vec4 aPosition;
+        uniform vec2 newPoint;
+        uniform int addPoint;
+        varying vec4 color;
+
+
+        void main() {
+            if(addPoint == 1 && aPosition.x == newPoint.x && aPosition.y == newPoint.y){
+                color = vec4(1,1,1,1);
+            }
+            else color = vec4(1,0,0,1);
+            gl_Position = aPosition;
+        }
+    </script>
     <script id="Frag" type="notjs">
         precision mediump float;
+        varying vec4 color;
 
         void main() {
 
-            gl_FragColor = vec4(1, 0, 0.5, 1); 
+            gl_FragColor = vec4(1,1,0,1); 
         }
     </script>
-    <script id="Vert" type="notjs">
-        attribute vec4 a_position;
-
-
-        void main() {
-
-            gl_Position = a_position;
-        }
-    </script>
-    <script src="https://webglfundamentals.org/webgl/resources/webgl-utils.js"></script>
     <script src="script.js"></script>
 </body>
