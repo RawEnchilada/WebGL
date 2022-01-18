@@ -1,4 +1,6 @@
 const canvas = document.querySelector("#Canvas");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 const vsSource = `
 precision mediump float;
@@ -95,6 +97,7 @@ function main() {
     ];
 
     render(gl, programInfo, points);
+    window.addEventListener('resize', render(gl,programInfo,points));
 }
 
 
@@ -196,7 +199,7 @@ function textureFromArray(gl, array) {
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 
     return texture;
 }
