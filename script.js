@@ -1,15 +1,14 @@
+const canvas = document.querySelector("#Canvas");
+
 const vsSource = `
 precision mediump float;
 
 attribute vec4 aVertexPosition;
-attribute vec2 aTextureCoord;
-varying vec4 position;
-varying highp vec2 vTextureCoord;
+varying vec2 inPosition;
 
 void main() {
-    position = aVertexPosition;
-    vTextureCoord = aTextureCoord;
-    gl_Position = position;
+    inPosition = ((aVertexPosition+vec4(1.0,1.0,1.0,1.0))/2.0).xy;
+    gl_Position = aVertexPosition;
 }
 `;
 
@@ -17,12 +16,31 @@ const fsSource = `
 precision mediump float;
 
 uniform sampler2D points;
-varying vec4 position;
-varying highp vec2 vTextureCoord;
+uniform int pointCount;
+uniform float screenRatio;
+varying vec2 inPosition;
+const float pointSize = 0.05;
+
+
+//decode the x,y coordinates from 4 bytes
+vec2 getPoint(int index) {
+    vec4 split = texture2D(points, vec2(float(index) / float(pointCount), 0.0));
+    return ((vec2(split.r*65280.0+split.g*255.0,split.b*65280.0+split.a*255.0)/65535.0)*vec2(screenRatio,1.0));
+}
+
 
 void main() {
-    vec4 color = texture2D(points, vec2(0.0,0.0));
-    gl_FragColor = vec4(color.rgb, 1.0);
+    vec2 position = inPosition*vec2(screenRatio,1.0);
+    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    for(int i = 0; i < 999999; i++){
+        if(i >= pointCount) break;
+        vec2 point = getPoint(i);
+        if(abs(position.x-point.x) < pointSize && abs(position.y-point.y) < pointSize){
+            color = vec4(1.0,0.0,0.0,1.0);
+            break;
+        }
+    }    
+    gl_FragColor = color;
 }
 `;
 
@@ -33,18 +51,20 @@ window.onload = main;
 
 
 function main() {
-    const canvas = document.querySelector("#Canvas");
     const gl = canvas.getContext("webgl2");
+
+    
 
     const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
     const programInfo = {
         program: shaderProgram,
         attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-            textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord')
+            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition')
         },
         uniformLocations: {
-            points: gl.getUniformLocation(shaderProgram, 'points')
+            points: gl.getUniformLocation(shaderProgram, 'points'),
+            pointCount: gl.getUniformLocation(shaderProgram, 'pointCount'),
+            screenRatio: gl.getUniformLocation(shaderProgram, 'screenRatio')
         },
     };
 
@@ -52,6 +72,8 @@ function main() {
         alert("Unable to initialize WebGL. Your browser or machine may not support it.");
         return;
     }
+    
+    gl.useProgram(programInfo.program);
 
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -64,25 +86,13 @@ function main() {
     gl.bufferData(gl.ARRAY_BUFFER,
         new Float32Array(fill),
         gl.STATIC_DRAW);
-
-    const textureCoordBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-    const textureCoordinates = [
-        0.0, 0.0,
-        1.0, 0.0,
-        0.0, 1.0,
-        1.0, 1.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, 
-        new Float32Array(textureCoordinates),
-        gl.STATIC_DRAW);
         
-    let points = new Float32Array([
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0
-    ]);
+    let points = [
+        {x: 1.0, y:0.1},
+        {x: 0.7, y:0.5},
+        {x: 0.2, y:0.0},
+        {x: 0.5, y:0.5}
+    ];
 
     render(gl, programInfo, points);
 }
@@ -113,23 +123,14 @@ function render(gl, programInfo, points) {
             offset);
         gl.enableVertexAttribArray(
             programInfo.attribLocations.vertexPosition);
-
-        gl.vertexAttribPointer(
-            programInfo.attribLocations.textureCoord,
-            numComponents,
-            type,
-            normalize,
-            stride,
-            offset);
-        gl.enableVertexAttribArray(
-            programInfo.attribLocations.textureCoord);
     }
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, textureFromArray(gl,points));
     gl.uniform1i(programInfo.uniformLocations.points, 0);
+    gl.uniform1i(programInfo.uniformLocations.pointCount, points.length);
+    gl.uniform1f(programInfo.uniformLocations.screenRatio, canvas.width/canvas.height);
 
-    gl.useProgram(programInfo.program);
 
     const offset = 0;
     const vertexCount = 4;
@@ -175,25 +176,44 @@ function loadShader(gl, type, source) {
     return shader;
 }
 
-//array must be Float32Array
+
 function textureFromArray(gl, array) {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
 
+    let formatted = encodeArray(array);
+
     const level = 0;
-    const internalFormat = gl.RGBA32F;
+    const internalFormat = gl.RGBA;
     const width = array.length;
     const height = 1;
     const border = 0;
-    const srcFormat = gl.RGBA32F;
-    const srcType = gl.FLOAT;
+    const srcFormat = gl.RGBA;
+    const srcType = gl.UNSIGNED_BYTE;
     gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
         width, height, border, srcFormat, srcType,
-        array);
+        formatted);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
     return texture;
+}
+
+/*
+Splitting up every number into 2 bytes to keep precision when passing as texture
+*/
+function encodeArray(array){
+    let butchered = new Uint8Array(array.length*4);
+    let i = 0;
+    for(let point of array){
+        let x = Math.floor(point.x*65535).toString(2);
+        let y = Math.floor(point.y*65535).toString(2);
+        butchered[i++] = parseInt(x.slice(0,8),2);
+        butchered[i++] = parseInt(x.slice(8,16),2);
+        butchered[i++] = parseInt(y.slice(0,8),2);
+        butchered[i++] = parseInt(y.slice(8,16),2);
+    }
+    return butchered;
 }
