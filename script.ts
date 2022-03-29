@@ -16,10 +16,12 @@ let mousePositionY:number;
 let points:Array<{x:number,y:number,s:number}> = [];
 let forces:Array<{x:number,y:number}> = [];
 let ttl:Array<number> = [];
+let tick = 0;
 
 const fps = 60;
 const pointSize = 0.02;
-const defaulTTL = 10000;
+const defaulTTL = 3000;
+
 
 window.onload = main;
 
@@ -108,15 +110,19 @@ function update(){
         ttl[i]--;
         if(ttl[i] <= 0){
             removePoint(i);
-        }else{
+        } else {
             let d = distance(points[i].x,points[i].y,mousePositionX,mousePositionY);
-            if(d < 0.1)points[i].s = Math.max(pointSize,pointSize*(1-d));
+            if(d < 0.05)points[i].s = Math.max(pointSize,pointSize+pointSize*(1-(d/0.05)));
             points[i].x += forces[i].x;
             points[i].y += forces[i].y;
             if(forces[i].x > 0)forces[i].x -= 0.005/fps;
             if(forces[i].y > -1)forces[i].y -= 0.05/fps;
             if(points[i].x < 0)removePoint(i);
         }
+    }
+    tick++;
+    if(tick % 10 == 0){
+        addPoint(Math.random(),Math.random()/2,Math.random()*0.02-0.01,0.03);
     }
 }
 

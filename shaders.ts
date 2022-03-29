@@ -26,16 +26,19 @@ varying vec2 inPosition;
 void main() {
     vec2 position = inPosition*vec2(screenRatio,1.0);
 
-    vec4 color = vec4(0.0,0.0,0.0,1.0);
+    vec3 color = vec3(0.0,0.0,0.0);
     vec4 prevColor = vec4(texture2D(texture, inPosition).rgb, 1.0);
+    if(length(prevColor.rgb) < 0.3)prevColor = vec4(0,0,0,1.0);
     for(int i = 0; i < 500; i++){
         if(i >= pointCount) break;
-        if(distance(points[i]*vec2(screenRatio,1.0),position) < pointSize[i]){
-            color = vec4(points[i].x,0.1,points[i].y,1.0);
+        float dist = distance(points[i]*vec2(screenRatio,1.0),position);
+        if(dist < pointSize[i]){
+            float weight = 1.0-dist/pointSize[i];
+            color = vec3(points[i].x,0.1,points[i].y)*vec3(weight,weight,weight);
             break;
         }
     }
-    gl_FragColor = color+prevColor;
+    gl_FragColor = vec4(color,1.0)+prevColor*0.95;
 }
 `;
 
